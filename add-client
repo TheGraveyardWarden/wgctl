@@ -1,0 +1,63 @@
+#!/bin/bash
+
+usage() {
+	echo "usage: $0 <client_name> <client_ip>"
+	exit -1
+}
+
+if [[ ! $1 ]]; then
+	echo "[-] client_name is required"
+	usage
+fi
+
+if [[ ! $2 ]]; then
+	echo "[-] client_ip is required"
+	usage
+fi
+
+name=$1
+ip=$2
+
+if [[ ! -d clients ]]; then
+	mkdir clients
+fi
+
+if [[ -d clients/$name ]]; then
+	echo "[-] client already exists"
+	exit -1
+fi
+
+echo "[+] creating client dir"
+mkdir clients/$name
+
+echo "[+] generating keys"
+wg genkey | tee clients/$name/privkey | wg pubkey > clients/$name/pubkey
+
+privkey=$(cat clients/$name/privkey)
+pubkey=$(cat clients/$name/pubkey)
+
+echo "[!] name: $name"
+echo "[!] ip: $ip"
+echo "[!] private key: $privkey"
+echo "[!] public key: $pubkey"
+
+echo "[+] adding client $name"
+wg set wg0 peer "$pubkey" allowed-ips "$ip/32"
+
+echo "[+] creating client config"
+cat > clients/$name/$name.conf <<EOF
+[Interface]
+# $name
+PrivateKey = $privkey
+Address = $ip/32
+DNS = 1.1.1.1
+
+[Peer]
+PublicKey = $(cat server/pubkey)
+Endpoint = $(cat server/endpoint)
+AllowedIPs = 0.0.0.0/0
+PersistentKeepalive = 25
+EOF
+echo "[!] client config created @ clients/$name/$name.conf"
+
+wg-quick save wg0

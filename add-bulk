@@ -1,0 +1,31 @@
+#!/bin/bash
+
+usage() {
+	echo "usage: $0 <start_ip> <n>"
+	echo "ip will look like 10.0.0.<start_ip>"
+	exit -1
+}
+
+if [[ ! $1 ]]; then
+	echo "[-] start_ip is required"
+	usage
+fi
+
+if [[ ! $2 ]]; then
+	echo "[-] n is required"
+	usage
+fi
+
+start_ip=$1
+n=$2
+
+if [[ ! -d bulks ]]; then
+	mkdir bulks
+fi
+
+for ((i=start_ip; i<start_ip+n; i++))
+do
+	echo "----------- creating client $i"
+	./add-client bulk$i 10.0.0.$i
+	cp clients/bulk$i/bulk$i.conf bulks
+done
