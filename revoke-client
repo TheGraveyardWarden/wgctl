@@ -1,0 +1,33 @@
+#!/bin/bash
+
+usage() {
+  echo "usage: $0 <client_name>"
+  exit -1
+}
+
+if [[ ! $1 ]]; then
+  echo "[-] client_name is required"
+  usage
+fi
+
+name=$1
+
+if [[ ! -d clients/$name ]]; then
+  echo "[-] client doesnt exist"
+  exit -1
+fi
+
+if [[ ! -f clients/$name/pubkey ]]; then
+  echo "[-] client pubkey doesnt exist"
+  exit -1
+fi
+
+echo "[+] removing client $name"
+wg set wg0 peer $(cat clients/$name/pubkey) remove
+
+echo "[+] saving server config"
+wg-quick save wg0
+
+echo "[!] removing client files"
+rm -rfv clients/$name
+
