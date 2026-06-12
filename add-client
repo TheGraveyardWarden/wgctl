@@ -1,5 +1,9 @@
 #!/bin/bash
 
+if [[ ! $WGCTL_INTERFACE ]]; then
+	WGCTL_INTERFACE=wg0
+fi
+
 usage() {
 	echo "usage: $0 <client_name> <client_ip>"
 	exit -1
@@ -42,7 +46,7 @@ echo "[!] private key: $privkey"
 echo "[!] public key: $pubkey"
 
 echo "[+] adding client $name"
-wg set wg0 peer "$pubkey" allowed-ips "$ip/32"
+wg set $WGCTL_INTERFACE peer "$pubkey" allowed-ips "$ip/32"
 
 echo "[+] creating client config"
 cat > clients/$name/$name.conf <<EOF
@@ -60,4 +64,4 @@ PersistentKeepalive = 25
 EOF
 echo "[!] client config created @ clients/$name/$name.conf"
 
-wg-quick save wg0
+wg-quick save $WGCTL_INTERFACE
