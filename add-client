@@ -5,7 +5,7 @@ if [[ ! $WGCTL_INTERFACE ]]; then
 fi
 
 usage() {
-	echo "usage: $0 <client_name> <client_ip>"
+	echo "usage: $0 <client_name> <client_ip> <quota> <db_file>"
 	exit -1
 }
 
@@ -19,8 +19,20 @@ if [[ ! $2 ]]; then
 	usage
 fi
 
+if [[ ! $3 ]]; then
+	echo "[-] quota is required"
+	usage
+fi
+
+if [[ ! $4 ]]; then
+	echo "[-] db_file is required"
+	usage
+fi
+
 name=$1
 ip=$2
+quota=$3
+db_file=$4
 
 if [[ ! -d clients ]]; then
 	mkdir clients
@@ -65,3 +77,7 @@ EOF
 echo "[!] client config created @ clients/$name/$name.conf"
 
 wg-quick save $WGCTL_INTERFACE
+
+echo "[+] adding quota to db"
+sqlite3 $db_file "insert into peers values('$pubkey', '$ip/32', $quota, 0, 0, 0);"
+
