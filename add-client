@@ -5,7 +5,7 @@ if [[ ! $WGCTL_INTERFACE ]]; then
 fi
 
 usage() {
-	echo "usage: $0 <client_name> <client_ip> <quota> <db_file>"
+	echo "usage: $0 <client_name> <ip_prefix> <quota> <db_file>"
 	exit -1
 }
 
@@ -15,7 +15,7 @@ if [[ ! $1 ]]; then
 fi
 
 if [[ ! $2 ]]; then
-	echo "[-] client_ip is required"
+	echo "[-] ip_prefix is required"
 	usage
 fi
 
@@ -30,9 +30,30 @@ if [[ ! $4 ]]; then
 fi
 
 name=$1
-ip=$2
+ip_prefix=$2
 quota=$3
 db_file=$4
+
+used_ips=$(wg show $WGCTL_INTERFACE allowed-ips | awk '$2!="" { sub(/\/.*/,"",$2); print $2 }')
+
+declare -A used
+for ip in $used_ips; do
+  used[$ip]=1
+done
+
+ip=""
+for((i=2;i<255;i++)); do
+  _ip="$ip_prefix.$i"
+  if [[ -z "${used[$_ip]:-}" ]]; then
+    ip=$_ip
+    break
+  fi
+done
+
+if [[ -z $ip ]]; then
+  echo "could not find ip"
+  exit -1
+fi
 
 if [[ ! -d clients ]]; then
 	mkdir clients

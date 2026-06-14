@@ -1,13 +1,12 @@
 #!/bin/bash
 
 usage() {
-	echo "usage: $0 <start_ip> <n> <quota> <db_file>"
-	echo "ip will look like 10.0.0.<start_ip>"
+	echo "usage: $0 <ip_prefix> <n> <quota> <db_file> <name_prefix>"
 	exit -1
 }
 
 if [[ ! $1 ]]; then
-	echo "[-] start_ip is required"
+	echo "[-] ip_prefix is required"
 	usage
 fi
 
@@ -26,19 +25,25 @@ if [[ ! $4 ]]; then
 	usage
 fi
 
-start_ip=$1
+if [[ ! $5 ]]; then
+	echo "[-] name_prefix is required"
+	usage
+fi
+
+ip_prefix=$1
 n=$2
 quota=$3
 db_file=$4
+name_prefix=$5
 
 if [[ ! -d bulks ]]; then
 	mkdir bulks
 fi
 
-for ((i=start_ip; i<start_ip+n; i++))
+for ((i=0; i<n; i++))
 do
 	echo "----------- creating client $i"
-	./add-client bulk$i 10.0.0.$i $quota $db_file
-	cp clients/bulk$i/bulk$i.conf bulks
+	./add-client $name_prefix$i $ip_prefix $quota $db_file
+	cp clients/$name_prefix$i/$name_prefix$i.conf bulks
 done
 
