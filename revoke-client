@@ -5,7 +5,7 @@ if [[ ! $WGCTL_INTERFACE ]]; then
 fi
 
 usage() {
-  echo "usage: $0 <client_name>"
+  echo "usage: $0 <client_name> <db_file>"
   exit -1
 }
 
@@ -14,7 +14,13 @@ if [[ ! $1 ]]; then
   usage
 fi
 
+if [[ ! $2 ]]; then
+  echo "[-] db_file is required"
+  usage
+fi
+
 name=$1
+db_file=$2
 
 if [[ ! -d clients/$name ]]; then
   echo "[-] client doesnt exist"
@@ -31,6 +37,8 @@ wg set $WGCTL_INTERFACE peer $(cat clients/$name/pubkey) remove
 
 echo "[+] saving server config"
 wg-quick save $WGCTL_INTERFACE
+
+sqlite3 $db_file "delete from peers where pubkey = '$(cat clients/$name/pubkey)';"
 
 echo "[!] removing client files"
 rm -rfv clients/$name
