@@ -1,0 +1,128 @@
+#!/bin/bash
+
+if [[ ! $WGCTL_INTERFACE ]]; then
+	WGCTL_INTERFACE=wg0
+fi
+
+usage() {
+	echo "usage: $0 <client_name> <ip_prefix> <quota> <db_file> [<tunnel_ip_list>]"
+	exit -1
+}
+
+if [[ ! $1 ]]; then
+	echo "[-] client_name is required"
+	usage
+fi
+
+if [[ ! $2 ]]; then
+	echo "[-] ip_prefix is required"
+	usage
+fi
+
+if [[ ! $3 ]]; then
+	echo "[-] quota is required"
+	usage
+fi
+
+if [[ ! $4 ]]; then
+	echo "[-] db_file is required"
+	usage
+fi
+
+name=$1
+shift
+ip_prefix=$1
+shift
+quota=$1
+shift
+db_file=$1
+shift
+
+used_ips=$(wg show $WGCTL_INTERFACE allowed-ips | awk '$2!="" { sub(/\/.*/,"",$2); print $2 }')
+
+declare -A used
+for ip in $used_ips; do
+  used[$ip]=1
+done
+
+ip=""
+for((i=2;i<255;i++)); do
+  _ip="$ip_prefix.$i"
+  if [[ -z "${used[$_ip]:-}" ]]; then
+    ip=$_ip
+    break
+  fi
+done
+
+if [[ -z $ip ]]; then
+  echo "could not find ip"
+  exit -5
+fi
+
+if [[ ! -d clients ]]; then
+	mkdir clients
+fi
+
+if [[ -d clients/$name ]]; then
+	echo "[-] client already exists"
+	exit -1
+fi
+
+#echo "[+] creating client dir"
+mkdir clients/$name
+
+#echo "[+] generating keys"
+wg genkey | tee clients/$name/privkey | wg pubkey > clients/$name/pubkey
+
+privkey=$(cat clients/$name/privkey)
+pubkey=$(cat clients/$name/pubkey)
+
+#echo "[!] name: $name"
+#echo "[!] ip: $ip"
+#echo "[!] private key: $privkey"
+#echo "[!] public key: $pubkey"
+
+#echo "[+] adding client $name"
+wg set $WGCTL_INTERFACE peer "$pubkey" allowed-ips "$ip/32"
+
+#echo "[+] creating client config"
+cat > clients/$name/$name.conf <<EOF
+[Interface]
+# $name
+PrivateKey = $privkey
+Address = $ip/32
+DNS = 1.1.1.1
+
+[Peer]
+PublicKey = $(cat server/pubkey)
+Endpoint = $(cat server/endpoint)
+AllowedIPs = 0.0.0.0/0
+PersistentKeepalive = 25
+EOF
+#echo "[!] client config created @ clients/$name/$name.conf"
+
+i=0
+for tip in $@; do
+  ((i=i+1))
+  cat > clients/$name/$name$i.conf <<EOF
+[Interface]
+# $name tunnel from $tip
+PrivateKey = $privkey
+Address = $ip/32
+DNS = 1.1.1.1
+
+[Peer]
+PublicKey = $(cat server/pubkey)
+Endpoint = $tip
+AllowedIPs = 0.0.0.0/0
+PersistentKeepalive = 25
+EOF
+done
+
+wg-quick save $WGCTL_INTERFACE
+
+#echo "[+] adding quota to db"
+sqlite3 $db_file "insert into peers values('$pubkey', '$ip/32', $quota, 0, 0, 0);"
+
+echo $ip
+
