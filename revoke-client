@@ -32,6 +32,13 @@ if [[ ! -f clients/$name/pubkey ]]; then
   exit -1
 fi
 
+ip=$(sqlite3 $db_file "select ip from peers where pubkey = '$(cat clients/$name/pubkey)'")
+if [[ ip ]]; then
+  echo "[+] removing iptables rules if there are any"
+  iptables -D FORWARD -s $ip -j DROP
+  iptables -D FORWARD -d $ip -j DROP
+fi
+
 echo "[+] removing client $name"
 wg set $WGCTL_INTERFACE peer $(cat clients/$name/pubkey) remove
 

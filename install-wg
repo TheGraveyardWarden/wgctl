@@ -4,6 +4,11 @@ if [[ ! $WGCTL_INTERFACE ]]; then
 	WGCTL_INTERFACE=wg0
 fi
 
+if [[ -f /etc/wireguard/$WGCTL_INTERFACE ]]; then
+  echo "[-] interface already exists"
+  exit -1
+fi
+
 usage() {
   echo "usage: $0 <default-dev> <cidr> <ip> <port>"
   exit -1
