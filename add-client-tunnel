@@ -5,7 +5,7 @@ if [[ ! $WGCTL_INTERFACE ]]; then
 fi
 
 usage() {
-	echo "usage: $0 <client_name> <ip_prefix> <quota> <db_file> [<tunnel_ip_list>]"
+	echo "usage: $0 <client_name> <ip_prefix> <quota> <deadline_days> <db_file> [<tunnel_ip_list>]"
 	exit -1
 }
 
@@ -25,6 +25,11 @@ if [[ ! $3 ]]; then
 fi
 
 if [[ ! $4 ]]; then
+	echo "[-] deadline_days is required"
+	usage
+fi
+
+if [[ ! $5 ]]; then
 	echo "[-] db_file is required"
 	usage
 fi
@@ -34,6 +39,8 @@ shift
 ip_prefix=$1
 shift
 quota=$1
+shift
+deadline=$1
 shift
 db_file=$1
 shift
@@ -122,7 +129,8 @@ done
 wg-quick save $WGCTL_INTERFACE
 
 #echo "[+] adding quota to db"
-sqlite3 $db_file "insert into peers values('$pubkey', '$ip/32', $quota, 0, 0, 0);"
+ts=$(date -d "+$deadline days" +%s)
+sqlite3 $db_file "insert into peers values('$pubkey', '$ip/32', $quota, 0, 0, $ts, 0);"
 
 echo $ip
 

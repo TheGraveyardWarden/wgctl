@@ -5,7 +5,7 @@ if [[ ! $WGCTL_INTERFACE ]]; then
 fi
 
 usage() {
-	echo "usage: $0 <client_name> <ip_prefix> <quota> <db_file>"
+	echo "usage: $0 <client_name> <ip_prefix> <quota> <deadline_days> <db_file>"
 	exit -1
 }
 
@@ -25,6 +25,11 @@ if [[ ! $3 ]]; then
 fi
 
 if [[ ! $4 ]]; then
+	echo "[-] deadline_days is required"
+	usage
+fi
+
+if [[ ! $5 ]]; then
 	echo "[-] db_file is required"
 	usage
 fi
@@ -32,7 +37,8 @@ fi
 name=$1
 ip_prefix=$2
 quota=$3
-db_file=$4
+deadline=$4
+db_file=$5
 
 used_ips=$(wg show $WGCTL_INTERFACE allowed-ips | awk '$2!="" { sub(/\/.*/,"",$2); print $2 }')
 
@@ -100,5 +106,6 @@ echo "[!] client config created @ clients/$name/$name.conf"
 wg-quick save $WGCTL_INTERFACE
 
 echo "[+] adding quota to db"
-sqlite3 $db_file "insert into peers values('$pubkey', '$ip/32', $quota, 0, 0, 0);"
+ts=$(date -d "+$deadline days" +%s)
+sqlite3 $db_file "insert into peers values('$pubkey', '$ip/32', $quota, 0, 0, $ts, 0);"
 
